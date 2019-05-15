@@ -239,19 +239,19 @@ could write:
 
 ```rb
 def to_serialized_hash
-    options = {
-       include: {
-          bird: {
-             only: [:name, :species]
-          },
-          location: {
-            only: [:latitude, :longitude]
-          }
+  options = {
+    include: {
+      bird: {
+        only: [:name, :species]
       },
-      except: [:updated_at],
-    }
-    @sighting.to_json(options)
-  end
+      location: {
+        only: [:latitude, :longitude]
+      }
+    },
+    except: [:updated_at],
+  }
+  @sighting.to_json(options)
+end
 ```
 
 Above, we define a variable, `options`, assigning it to an empty hash. We then
