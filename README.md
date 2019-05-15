@@ -2,7 +2,9 @@
 
 ## Learning Goals
 
-- 
+- Remove logic from controller actions in to a separate service class
+- Refactor code to eliminate repetition
+
 ## Introduction
 
 In the previous lessons, we started to see how customizing our JSON data in the
