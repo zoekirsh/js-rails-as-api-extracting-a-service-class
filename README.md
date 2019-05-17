@@ -190,9 +190,9 @@ will be stored as `@sighting`. We will need to access to this variable elsewhere
 in the `SightingSerializer`, so an instance variable is needed here.
 
 The second step is to write a method that will call `to_json` on this instance
-variable and returns the result. We will call this method `to_serialized_hash`,
-and for now we can directly copy the `to_json` logic that currently exists in
-`SightingsController`:
+variable, handling the inclusion and exclusion of attributes, and return the results. 
+We will call this method `to_serialized_json`, and for now we can directly copy the 
+`to_json` logic that currently exists in `SightingsController`:
 
 ```ruby
 class SightingSerializer
@@ -201,7 +201,7 @@ def initialize(sighting_object)
   @sighting = sighting_object
 end
 
-def to_serialized_hash
+def to_serialized_json
   @sighting.to_json(:include => {:bird => {:only =>[:name, :species]}, :location => {:only => [:latitude, :longitude]}}, :except => [:updated_at])
 end
 
@@ -209,7 +209,8 @@ end
 ```
 
 With this setup, once an instance of `SightingSerializer` is created, we can
-call `to_serialized_hash` on it to get our customized JSON data!
+call `to_serialized_json` on it to get our data customized and ready to go as
+a JSON string!
 
 Now it is time to clean up `SightingsController` and replace the original render
 statements with our new service class:
@@ -218,12 +219,12 @@ statements with our new service class:
 class SightingsController < ApplicationController
   def index
     sightings = Sighting.all
-    render json: SightingSerializer.new(sightings).to_serialized_hash
+    render json: SightingSerializer.new(sightings).to_serialized_json
   end
 
   def show
     sighting = Sighting.find_by(id: params[:id])
-    render json: SightingSerializer.new(sighting).to_serialized_hash
+    render json: SightingSerializer.new(sighting).to_serialized_json
   end
 end
 ```
@@ -234,14 +235,14 @@ our `to_json` any easier to read.
 
 ## Organizing Options
 
-In the `to_serialized_hash` method, we are passing multiple options into
+In the `to_serialized_json` method, we are passing multiple options into
 `to_json` when it is called. These options are just key/value pairs in a hash,
 though, and we can choose to break this line up to get a better grasp of what is
 actually going on. Rewriting the method without changing any functionality, we
 could write:
 
 ```rb
-def to_serialized_hash
+def to_serialized_json
   options = {
     include: {
       bird: {
