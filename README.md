@@ -10,11 +10,11 @@
 In the previous lessons, we started to see how customizing our JSON data in the
 controller works but can start to get pretty complicated. It is possible for
 a single controller action to render data from multiple models on our Rails
-API. It is also possible to specify what we want and don't want to render. 
+API. It is also possible to specify what we want and don't want to render.
 
 The complication comes when we start to scale. More models, more data, more
 pieces to customize until it becomes unmanageable. In this code-along, we're going
-to look at building our own solution to this problem. 
+to look at building our own solution to this problem.
 
 The files in this lesson were populated using the API-only Rails build. Run
 `rails db:migrate` and `rails db:seed` to follow along.
@@ -27,15 +27,15 @@ locations are related together through sightings:
 
 ```rb
 class Bird < ApplicationRecord
-    has_many :sightings
-    has_many :locations, through: :sightings
+  has_many :sightings
+  has_many :locations, through: :sightings
 end
 ```
 
 ```rb
 class Location < ApplicationRecord
-    has_many :sightings
-    has_many :birds, through: :sightings
+  has_many :sightings
+  has_many :birds, through: :sightings
 end
 ```
 
@@ -46,14 +46,14 @@ class Sighting < ApplicationRecord
 end
 ```
 
-And we left off with a messy combination of `include`, `only` and `except` in
+And we left off with a messy combination of `include`, `only`, and `except` in
 order to customize what attributes we wanted to render to JSON:
 
 ```rb
 class SightingsController < ApplicationController
   def show
-    @sighting = Sighting.find(params[:id])
-    render json: @sighting.to_json(:include => {:bird => {:only =>[:name, :species]}, :location => {:only =>[:latitude, :longitude]}}, :except => [:updated_at])
+    sighting = Sighting.find_by(id: params[:id])
+    render json: sighting.to_json(:include => {:bird => {:only =>[:name, :species]}, :location => {:only =>[:latitude, :longitude]}}, :except => [:updated_at])
   end
 end
 ```
@@ -83,13 +83,13 @@ We can use render statement in an `index` action without having to change it:
 ```rb
 class SightingsController < ApplicationController
   def index
-    @sightings = Sighting.all
-    render json: @sightings.to_json(:include => {:bird => {:only =>[:name, :species]}, :location => {:only =>[:latitude, :longitude]}}, :except => [:updated_at])
+    sightings = Sighting.all
+    render json: sightings.to_json(:include => {:bird => {:only =>[:name, :species]}, :location => {:only =>[:latitude, :longitude]}}, :except => [:updated_at])
   end
 
   def show
-    @sighting = Sighting.find(params[:id])
-    render json: @sighting.to_json(:include => {:bird => {:only =>[:name, :species]}, :location => {:only =>[:latitude, :longitude]}}, :except => [:updated_at])
+    sighting = Sighting.find_by(id: params[:id])
+    render json: sighting.to_json(:include => {:bird => {:only =>[:name, :species]}, :location => {:only =>[:latitude, :longitude]}}, :except => [:updated_at])
   end
 end
 ```
@@ -102,7 +102,7 @@ making errors.
 There is also a separate issue - controllers are really just meant to act as a
 relay between our models and our view, or well, our rendered JSON in this case.
 If we can extract the work of customizing our JSON data and put it somewhere
-else, we could keep our controller actions cleaner. 
+else, we could keep our controller actions cleaner.
 
 Let's resolve this issue before resolving the issue of readability. One way to
 resolve this issue is to build a service class.
@@ -147,19 +147,19 @@ and available in places like `SightingsController`.
 ## Configuring the New Serializer
 
 Looking back at `SightingsController`, we are currently calling the `to_json`
-method on the variables `@sightings` and `@sighting` in the two controller
+method on the variables `sightings` and `sighting` in the two controller
 actions:
 
 ```rb
 class SightingsController < ApplicationController
   def index
-    @sightings = Sighting.all
-    render json: @sightings.to_json(:include => {:bird => {:only =>[:name, :species]}, :location => {:only =>[:latitude, :longitude]}}, :except => [:updated_at])
+    sightings = Sighting.all
+    render json: sightings.to_json(:include => {:bird => {:only =>[:name, :species]}, :location => {:only =>[:latitude, :longitude]}}, :except => [:updated_at])
   end
 
   def show
-    @sighting = Sighting.find(params[:id])
-    render json: @sighting.to_json(:include => {:bird => {:only =>[:name, :species]}, :location => {:only =>[:latitude, :longitude]}}, :except => [:updated_at])
+    sighting = Sighting.find_by(id: params[:id])
+    render json: sighting.to_json(:include => {:bird => {:only =>[:name, :species]}, :location => {:only =>[:latitude, :longitude]}}, :except => [:updated_at])
   end
 end
 ```
@@ -186,11 +186,13 @@ end
 ```
 
 Now, whatever we pass when initializing a new instance of `SightingSerializer`
-will be stored as `@sighting`.
+will be stored as `@sighting`. We will need to access to this variable elsewhere
+in the `SightingSerializer`, so an instance variable is needed here.
 
-The second step is to write a method that calls `to_json` on this instance variable
-and returns the result. We will call this method `to_serialized_hash`, and we can
-directly copy the `to_json` logic that currently exists in `SightingsController`:
+The second step is to write a method that will call `to_json` on this instance
+variable, handling the inclusion and exclusion of attributes, and return the results. 
+We will call this method `to_serialized_json`, and for now we can directly copy the 
+`to_json` logic that currently exists in `SightingsController`:
 
 ```ruby
 class SightingSerializer
@@ -199,7 +201,7 @@ def initialize(sighting_object)
   @sighting = sighting_object
 end
 
-def to_serialized_hash
+def to_serialized_json
   @sighting.to_json(:include => {:bird => {:only =>[:name, :species]}, :location => {:only => [:latitude, :longitude]}}, :except => [:updated_at])
 end
 
@@ -207,7 +209,8 @@ end
 ```
 
 With this setup, once an instance of `SightingSerializer` is created, we can
-call `to_serialized_hash` on it to get our customized JSON data! 
+call `to_serialized_json` on it to get our data customized and ready to go as
+a JSON string!
 
 Now it is time to clean up `SightingsController` and replace the original render
 statements with our new service class:
@@ -215,30 +218,31 @@ statements with our new service class:
 ```rb
 class SightingsController < ApplicationController
   def index
-    @sightings = Sighting.all
-    render json: SightingSerializer.new(@sightings).to_serialized_hash
+    sightings = Sighting.all
+    render json: SightingSerializer.new(sightings).to_serialized_json
   end
 
   def show
-    @sighting = Sighting.find(params[:id])
-    render json: SightingSerializer.new(@sighting).to_serialized_hash
+    sighting = Sighting.find_by(id: params[:id])
+    render json: SightingSerializer.new(sighting).to_serialized_json
   end
 end
 ```
 
 Extraction complete! We've resolved the issue of keeping our controller clear of
-excess logic. However, we still haven't made our `to_json` any easier to read.
+excess logic by moving it to a separate class. However, we still haven't made
+our `to_json` any easier to read.
 
 ## Organizing Options
 
-In the `to_serialized_hash` method, we are passing multiple options into
+In the `to_serialized_json` method, we are passing multiple options into
 `to_json` when it is called. These options are just key/value pairs in a hash,
 though, and we can choose to break this line up to get a better grasp of what is
 actually going on. Rewriting the method without changing any functionality, we
 could write:
 
 ```rb
-def to_serialized_hash
+def to_serialized_json
   options = {
     include: {
       bird: {
@@ -256,10 +260,10 @@ end
 
 Above, we define a variable, `options`, assigning it to an empty hash. We then
 define a key on that hash, `:include`, assigning it to the same hash we had
-previously. The same for `:except`. 
+previously. The same for `:except`.
 
 This time, instead of filling `to_json` with a long list of options, we pass in
-the `options` hash. 
+the `options` hash.
 
 ## Conclusion
 
