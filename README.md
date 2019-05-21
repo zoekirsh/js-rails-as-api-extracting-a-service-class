@@ -50,11 +50,12 @@ And we left off with a messy combination of `include`, `only`, and `except` in
 order to customize what attributes we wanted to render to JSON:
 
 ```rb
-class SightingsController < ApplicationController
-  def show
-    sighting = Sighting.find_by(id: params[:id])
-    render json: sighting.to_json(:include => {:bird => {:only =>[:name, :species]}, :location => {:only =>[:latitude, :longitude]}}, :except => [:updated_at])
-  end
+def show
+  sighting = Sighting.find_by(id: params[:id])
+  render json: sighting.to_json(:include => {
+    :bird => {:only => [:name, :species]},
+    :location => {:only => [:latitude, :longitude]}
+  }, :except => [:updated_at])
 end
 ```
 
@@ -78,18 +79,24 @@ visiting `http://localhost:3000/sightings/2` produces the following set of data:
 }
 ```
 
-We can use render statement in an `index` action without having to change it:
+We can use the same render statement in an `index` action without having to change it:
 
 ```rb
 class SightingsController < ApplicationController
   def index
     sightings = Sighting.all
-    render json: sightings.to_json(:include => {:bird => {:only =>[:name, :species]}, :location => {:only =>[:latitude, :longitude]}}, :except => [:updated_at])
+    render json: sightings.to_json(:include => {
+      :bird => {:only => [:name, :species]},
+      :location => {:only => [:latitude, :longitude]}
+    }, :except => [:updated_at])
   end
 
   def show
     sighting = Sighting.find_by(id: params[:id])
-    render json: sighting.to_json(:include => {:bird => {:only =>[:name, :species]}, :location => {:only =>[:latitude, :longitude]}}, :except => [:updated_at])
+    render json: sighting.to_json(:include => {
+      :bird => {:only => [:name, :species]},
+      :location => {:only => [:latitude, :longitude]}
+    }, :except => [:updated_at])
   end
 end
 ```
@@ -114,7 +121,7 @@ logic of the application. In this case, we are looking to handle the logic of
 arranging our JSON data the way we want it.
 
 In the `SightingsController`, we already have working render statements. Our
-goal is not to change this statement, just move the work off of the controller.
+goal is not to change these statements, just move the work off of the controller.
 
 To create a class we will be able to utilize in place of the current render
 statements, first, we'll create a new folder within `app` called `services`:
@@ -125,7 +132,7 @@ mkdir app/services
 
 Then we'll need to create a service class to use in our `SightingsController`.
 Since we're specifically arranging and serving up data, and also for reasons
-that will become much clearer in upcoming lessons, we'll create a class called
+that will become much clearer in the next lesson, we'll create a class called
 `SightingSerializer` and save it in the `services` folder as
 `sighting_serializer.rb`:
 
@@ -133,14 +140,14 @@ that will become much clearer in upcoming lessons, we'll create a class called
 touch app/services/sighting_serializer.rb
 ```
 
-This can be a plain Ruby class, without the need to inherit from anything:
+This can be a plain Ruby class without the need to inherit from anything:
 
 ```ruby
 class SightingSerializer
 end
 ```
 
-Once a new class and file is created this way, you'll need to restart the Rails
+Once a new class and file are created this way, you'll need to restart the Rails
 server if it is running in order for `SightingSerializer` to be recognized
 and available in places like `SightingsController`.
 
@@ -154,12 +161,18 @@ actions:
 class SightingsController < ApplicationController
   def index
     sightings = Sighting.all
-    render json: sightings.to_json(:include => {:bird => {:only =>[:name, :species]}, :location => {:only =>[:latitude, :longitude]}}, :except => [:updated_at])
+    render json: sightings.to_json(:include => {
+      :bird => {:only => [:name, :species]},
+      :location => {:only => [:latitude, :longitude]}
+    }, :except => [:updated_at])
   end
 
   def show
     sighting = Sighting.find_by(id: params[:id])
-    render json: sighting.to_json(:include => {:bird => {:only =>[:name, :species]}, :location => {:only =>[:latitude, :longitude]}}, :except => [:updated_at])
+    render json: sighting.to_json(:include => {
+      :bird => {:only => [:name, :species]},
+      :location => {:only => [:latitude, :longitude]}
+    }, :except => [:updated_at])
   end
 end
 ```
@@ -202,7 +215,10 @@ def initialize(sighting_object)
 end
 
 def to_serialized_json
-  @sighting.to_json(:include => {:bird => {:only =>[:name, :species]}, :location => {:only => [:latitude, :longitude]}}, :except => [:updated_at])
+  @sighting.to_json(:include => {
+    :bird => {:only => [:name, :species]},
+    :location => {:only => [:latitude, :longitude]}
+  }, :except => [:updated_at])
 end
 
 end
@@ -267,7 +283,7 @@ the `options` hash.
 
 ## Conclusion
 
-With a fully extracted `SightingSerializer`, we are able to leave our controller
+With a fully extracted `SightingSerializer`, we were able to leave our controller
 free of clutter and extra logic. We were able to write a small class and utilize
 its methods multiple times, rather than repeat ourselves. Meanwhile, we now have
 the space within that class to make our code as easy to understand as possible.
